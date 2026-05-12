@@ -131,6 +131,52 @@ st.markdown("""
     hr {
         margin: 1rem 0 !important;
     }
+    
+    /* Table styling - Enhanced readability */
+    [data-testid="dataFrame"] {
+        background-color: #0e1117 !important;
+        font-size: clamp(11px, 2vw, 13px) !important;
+    }
+    
+    [data-testid="dataFrame"] thead {
+        background-color: #161b22 !important;
+        border-bottom: 2px solid #58a6ff !important;
+    }
+    
+    [data-testid="dataFrame"] th {
+        color: #58a6ff !important;
+        font-weight: bold !important;
+        padding: 12px !important;
+        text-align: center !important;
+        border-right: 1px solid #30363d !important;
+    }
+    
+    [data-testid="dataFrame"] td {
+        color: #e0e0e0 !important;
+        padding: 10px 12px !important;
+        border-right: 1px solid #30363d !important;
+        text-align: center !important;
+    }
+    
+    [data-testid="dataFrame"] tbody tr:hover {
+        background-color: #1c2128 !important;
+    }
+    
+    [data-testid="dataFrame"] tbody tr:nth-child(even) {
+        background-color: #161b22 !important;
+    }
+    
+    /* Expander styling */
+    [data-testid="stExpander"] {
+        background-color: #0e1117 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 6px !important;
+    }
+    
+    [data-testid="stExpander"] button {
+        background-color: #161b22 !important;
+        color: #58a6ff !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 def calculate_rsi(data, period=14):
@@ -490,13 +536,59 @@ def main():
         st.divider()
         
         # ================================================================
-        # DATA TABLE
+        # DATA TABLE - ENHANCED DISPLAY
         # ================================================================
-        with st.expander("📋 View Recent Data", expanded=False):
-            display_data = data[['Close', 'RSI', 'MA50', 'MA200', 'Target']].tail(10).copy()
-            display_data = display_data.round(2)
+        with st.expander("📋 View Recent Data (Last 15 Days)", expanded=False):
+            # Prepare display data with better formatting
+            display_data = data[['Close', 'RSI', 'MA50', 'MA200', 'Target']].tail(15).copy()
+            
+            # Rename columns for clarity
+            display_data.columns = ['Close Price ($)', 'RSI (14)', '50-day MA ($)', '200-day MA ($)', 'Next Day Trend']
+            
+            # Format numbers with proper precision
+            display_data['Close Price ($)'] = display_data['Close Price ($)'].apply(lambda x: f"${x:,.2f}")
+            display_data['RSI (14)'] = display_data['RSI (14)'].apply(lambda x: f"{x:.2f}")
+            display_data['50-day MA ($)'] = display_data['50-day MA ($)'].apply(lambda x: f"${x:,.2f}")
+            display_data['200-day MA ($)'] = display_data['200-day MA ($)'].apply(lambda x: f"${x:,.2f}")
+            display_data['Next Day Trend'] = display_data['Next Day Trend'].apply(lambda x: "📈 UP" if x == 1 else "📉 DOWN")
+            
+            # Reset index to show dates clearly
             display_data.index.name = 'Date'
-            st.dataframe(display_data, use_container_width=True)
+            display_data = display_data.reset_index()
+            display_data['Date'] = display_data['Date'].dt.strftime('%Y-%m-%d')
+            
+            # Display with enhanced styling
+            st.dataframe(
+                display_data,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Date": st.column_config.Column(width="medium"),
+                    "Close Price ($)": st.column_config.Column(width="medium"),
+                    "RSI (14)": st.column_config.Column(width="small"),
+                    "50-day MA ($)": st.column_config.Column(width="medium"),
+                    "200-day MA ($)": st.column_config.Column(width="medium"),
+                    "Next Day Trend": st.column_config.Column(width="medium"),
+                }
+            )
+            
+            # Add data summary below table
+            st.markdown("---")
+            col_summary1, col_summary2, col_summary3 = st.columns(3)
+            
+            with col_summary1:
+                st.metric("Current Close", f"${data['Close'].iloc[-1].item():,.2f}", 
+                         delta=f"${data['Close'].iloc[-1].item() - data['Close'].iloc[-2].item():+.2f}")
+            
+            with col_summary2:
+                avg_rsi = data['RSI'].tail(15).mean()
+                st.metric("Avg RSI (15d)", f"{avg_rsi:.2f}", 
+                         delta="Overbought" if avg_rsi > 70 else ("Oversold" if avg_rsi < 30 else "Neutral"))
+            
+            with col_summary3:
+                trend_count = (data['Target'].tail(15) == 1).sum()
+                st.metric("Bullish Days", f"{trend_count}/15", 
+                         delta=f"{(trend_count/15)*100:.0f}%")
         
         # ================================================================
         # INFORMATION CARDS
