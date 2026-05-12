@@ -14,21 +14,24 @@ st.set_page_config(
     page_title="Stock Price Trend Predictor",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"
 )
+
 st.markdown("""
     <style>
     /* Main background */
     [data-testid="stMainBlockContainer"] {
         background-color: #0e1117;
         color: #e0e0e0;
+        padding: 0 !important;
     }
     
     /* Metric styling */
     [data-testid="metric-container"] {
         background-color: #161b22;
         border-radius: 8px;
-        padding: 15px;
+        padding: 12px 15px;
+        border-left: 3px solid #58a6ff;
     }
     
     /* Chart styling */
@@ -36,16 +39,97 @@ st.markdown("""
         background-color: #0e1117 !important;
     }
     
-    /* Headers */
-    h1, h2, h3 {
+    /* Headers - Responsive */
+    h1 {
         color: #58a6ff !important;
+        font-size: clamp(24px, 5vw, 40px) !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    h2, h3 {
+        color: #58a6ff !important;
+        font-size: clamp(18px, 4vw, 28px) !important;
+    }
+    
+    h4 {
+        color: #79c0ff !important;
+        font-size: clamp(14px, 3vw, 18px) !important;
     }
     
     /* Input boxes */
-    input {
+    input, select, textarea {
         background-color: #161b22 !important;
         color: #e0e0e0 !important;
         border-color: #30363d !important;
+        font-size: clamp(12px, 2vw, 14px) !important;
+    }
+    
+    /* Responsive button styling */
+    button {
+        font-size: clamp(12px, 2vw, 14px) !important;
+        padding: clamp(8px, 1vw, 12px) 16px !important;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        [data-testid="stMainBlockContainer"] {
+            padding: 0 !important;
+        }
+        
+        .stSelectbox, .stTextInput {
+            width: 100% !important;
+        }
+        
+        [data-testid="metric-container"] {
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            width: 100% !important;
+            margin-top: 8px !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        h1 {
+            font-size: 20px !important;
+        }
+        
+        h2, h3 {
+            font-size: 16px !important;
+        }
+        
+        /* Sidebar adjustments for mobile */
+        [data-testid="stSidebar"] {
+            width: 100% !important;
+        }
+    }
+    
+    /* General responsive spacing */
+    .css-1d391kg {
+        padding: 1rem 0.5rem !important;
+    }
+    
+    /* Columns gap adjustment */
+    .element-container {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Alert styling */
+    .stAlert {
+        font-size: clamp(12px, 2vw, 14px) !important;
+        padding: clamp(10px, 2vw, 15px) !important;
+    }
+    
+    /* Text sizing */
+    p, span, div {
+        font-size: clamp(12px, 2vw, 14px) !important;
+    }
+    
+    /* Divider styling */
+    hr {
+        margin: 1rem 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -215,7 +299,7 @@ def create_price_chart(df):
         yaxis_title='Price ($)',
         hovermode='x unified',
         template='plotly_dark',
-        height=500,
+        height=max(300, min(600, 500)),
         margin=dict(l=0, r=0, t=40, b=0),
         paper_bgcolor='rgba(14, 17, 23, 1)',
         plot_bgcolor='rgba(14, 17, 23, 1)',
@@ -256,7 +340,7 @@ def create_rsi_chart(df):
         yaxis_title='RSI',
         hovermode='x unified',
         template='plotly_dark',
-        height=350,
+        height=max(250, min(450, 350)),
         margin=dict(l=0, r=0, t=40, b=0),
         paper_bgcolor='rgba(14, 17, 23, 1)',
         plot_bgcolor='rgba(14, 17, 23, 1)',
@@ -338,46 +422,27 @@ def main():
         prediction, confidence = predict_next_day_trend(model, latest_rsi, latest_ma50, latest_ma200)
         
         # ================================================================
-        # DISPLAY METRICS IN COLUMNS
+        # DISPLAY METRICS IN COLUMNS - RESPONSIVE LAYOUT
         # ================================================================
         st.subheader("📊 Key Metrics")
         
-        col1, col2, col3, col4, col5 = st.columns(5)
+        # Create responsive columns (mobile: 1, tablet: 2, desktop: 5)
+        metrics_data = [
+            ("Current Price", f"${latest_close:.2f}", None),
+            ("RSI (14)", f"{latest_rsi:.2f}", "Overbought" if latest_rsi > 70 else ("Oversold" if latest_rsi < 30 else "Neutral")),
+            ("50-day MA", f"${latest_ma50:.2f}", f"${latest_close - latest_ma50:+.2f}"),
+            ("200-day MA", f"${latest_ma200:.2f}", f"${latest_close - latest_ma200:+.2f}"),
+            ("Model Accuracy", f"{model_accuracy * 100:.1f}%", "Based on test set")
+        ]
         
-        with col1:
-            st.metric(
-                label="Current Price",
-                value=f"${latest_close:.2f}",
-                delta=None
-            )
-        
-        with col2:
-            st.metric(
-                label="RSI (14)",
-                value=f"{latest_rsi:.2f}",
-                delta="Overbought" if latest_rsi > 70 else ("Oversold" if latest_rsi < 30 else "Neutral")
-            )
-        
-        with col3:
-            st.metric(
-                label="50-day MA",
-                value=f"${latest_ma50:.2f}",
-                delta=f"${latest_close - latest_ma50:+.2f}"
-            )
-        
-        with col4:
-            st.metric(
-                label="200-day MA",
-                value=f"${latest_ma200:.2f}",
-                delta=f"${latest_close - latest_ma200:+.2f}"
-            )
-        
-        with col5:
-            st.metric(
-                label="Model Accuracy",
-                value=f"{model_accuracy * 100:.1f}%",
-                delta="Based on test set"
-            )
+        # Display metrics in responsive grid
+        for i in range(0, len(metrics_data), 5):
+            cols = st.columns(5)
+            for j, col in enumerate(cols):
+                if i + j < len(metrics_data):
+                    label, value, delta = metrics_data[i + j]
+                    with col:
+                        st.metric(label=label, value=value, delta=delta)
         
         st.divider()
         
@@ -409,7 +474,8 @@ def main():
         # ================================================================
         st.subheader("📈 Technical Analysis")
         
-        chart_col1, chart_col2 = st.columns([3, 2])
+        # Responsive columns for charts (1 column on mobile, 3:2 on desktop)
+        chart_col1, chart_col2 = st.columns([3, 2], gap="medium")
         
         with chart_col1:
             # Price chart with MAs
@@ -437,7 +503,7 @@ def main():
         # ================================================================
         st.subheader("ℹ️ Interpretation Guide")
         
-        info_col1, info_col2, info_col3 = st.columns(3)
+        info_col1, info_col2, info_col3 = st.columns(3, gap="small")
         
         with info_col1:
             st.info("""
